@@ -81,11 +81,6 @@ struct sugov_cpu {
 	unsigned long max;
 	unsigned int flags;
 	unsigned int cpu;
-
-	/* The field below is for single-CPU policies only. */
-#ifdef CONFIG_NO_HZ_COMMON
-	unsigned long saved_idle_calls;
-#endif
 };
 
 static DEFINE_PER_CPU(struct sugov_cpu, sugov_cpu);
@@ -363,19 +358,6 @@ static void sugov_walt_adjust(struct sugov_cpu *sg_cpu, unsigned long *util,
 		*util = max(*util, sg_cpu->walt_load.pl);
 }
 
-#ifdef CONFIG_NO_HZ_COMMON
-static bool sugov_cpu_is_busy(struct sugov_cpu *sg_cpu)
-{
-	unsigned long idle_calls = tick_nohz_get_idle_calls();
-	bool ret = idle_calls == sg_cpu->saved_idle_calls;
-
-	sg_cpu->saved_idle_calls = idle_calls;
-	return ret;
-}
-#else
-static inline bool sugov_cpu_is_busy(struct sugov_cpu *sg_cpu) { return false; }
-#endif /* CONFIG_NO_HZ_COMMON */
-
 static void sugov_update_single(struct update_util_data *hook, u64 time,
 				unsigned int flags)
 {
@@ -384,7 +366,6 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 	struct cpufreq_policy *policy = sg_policy->policy;
 	unsigned long util, max, hs_util;
 	unsigned int next_f;
-	bool busy;
 
 	flags &= ~SCHED_CPUFREQ_RT_DL;
 
@@ -399,8 +380,6 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 	sg_policy->flags = flags;
 #endif
 		return;
-
-	busy = sugov_cpu_is_busy(sg_cpu);
 
 	raw_spin_lock(&sg_policy->update_lock);
 	if (flags & SCHED_CPUFREQ_RT_DL) {
@@ -429,15 +408,8 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 		sugov_iowait_boost(sg_cpu, &util, &max);
 		sugov_walt_adjust(sg_cpu, &util, &max);
 		next_f = get_next_freq(sg_policy, util, max);
-		/*
-		 * Do not reduce the frequency if the CPU has not been idle
-		 * recently, as the reduction is likely to be premature then.
-		 */
-		if (busy && next_f < sg_policy->next_freq) {
-				next_f = sg_policy->next_freq;
                 /* clear cache when it's bypassed */
                 sg_policy->cached_raw_freq = 0;
-            }
 	}
 
 	sugov_update_commit(sg_policy, time, next_f);
