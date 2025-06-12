@@ -25,7 +25,7 @@
 #include <asm/uaccess.h>
 
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
-extern int susfs_sus_ino_for_filldir64(unsigned long ino);
+extern bool susfs_is_fuse_ino_sus_ino(unsigned long ino);
 #endif
 
 int iterate_dir(struct file *file, struct dir_context *ctx)
@@ -125,6 +125,9 @@ struct old_linux_dirent {
 struct readdir_callback {
 	struct dir_context ctx;
 	struct old_linux_dirent __user * dirent;
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	struct super_block *sb;
+#endif
 	int result;
 };
 
@@ -135,6 +138,22 @@ static int fillonedir(struct dir_context *ctx, const char *name, int namlen,
 		container_of(ctx, struct readdir_callback, ctx);
 	struct old_linux_dirent __user * dirent;
 	unsigned long d_ino;
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	struct inode *inode;
+
+	if (buf->sb->s_magic == FUSE_SUPER_MAGIC && susfs_is_fuse_ino_sus_ino(ino)) {
+		return 0;
+	} else {
+		inode = ilookup(buf->sb, ino);
+		if (inode) {
+			if (susfs_need_to_spoof_sus_path(inode,  inode->i_uid.val)) {
+				iput(inode);
+				return 0;
+			}
+			iput(inode);
+		}
+	}
+#endif
 
 	if (buf->result)
 		return -EINVAL;
@@ -173,7 +192,10 @@ SYSCALL_DEFINE3(old_readdir, unsigned int, fd,
 
 	if (!f.file)
 		return -EBADF;
-
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	buf.sb = f.file->f_inode->i_sb;
+#endif		
+	
 	error = iterate_dir(f.file, &buf.ctx);
 	if (buf.result)
 		error = buf.result;
@@ -198,6 +220,9 @@ struct linux_dirent {
 struct getdents_callback {
 	struct dir_context ctx;
 	struct linux_dirent __user * current_dir;
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	struct super_block *sb;
+#endif		
 	struct linux_dirent __user * previous;
 	int count;
 	int error;
@@ -214,8 +239,19 @@ static int filldir(struct dir_context *ctx, const char *name, int namlen,
 		sizeof(long));
 
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
-	if (likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC) && susfs_sus_ino_for_filldir64(ino)) {
+	struct inode *inode;
+
+	if (buf->sb->s_magic == FUSE_SUPER_MAGIC && susfs_is_fuse_ino_sus_ino(ino)) {
 		return 0;
+	} else {
+		inode = ilookup(buf->sb, ino);
+		if (inode) {
+			if (susfs_need_to_spoof_sus_path(inode,  inode->i_uid.val)) {
+				iput(inode);
+				return 0;
+			}
+			iput(inode);
+		}
 	}
 #endif
 	buf->error = verify_dirent_name(name, namlen);
@@ -275,6 +311,9 @@ SYSCALL_DEFINE3(getdents, unsigned int, fd,
 	f = fdget_pos(fd);
 	if (!f.file)
 		return -EBADF;
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	buf.sb = f.file->f_inode->i_sb;
+#endif		
 
 	error = iterate_dir(f.file, &buf.ctx);
 	if (error >= 0)
@@ -293,6 +332,9 @@ SYSCALL_DEFINE3(getdents, unsigned int, fd,
 struct getdents_callback64 {
 	struct dir_context ctx;
 	struct linux_dirent64 __user * current_dir;
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	struct super_block *sb;
+#endif	
 	struct linux_dirent64 __user * previous;
 	int count;
 	int error;
@@ -308,8 +350,19 @@ static int filldir64(struct dir_context *ctx, const char *name, int namlen,
 		sizeof(u64));
 
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
-	if (likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC) && susfs_sus_ino_for_filldir64(ino)) {
+	struct inode *inode;
+
+	if (buf->sb->s_magic == FUSE_SUPER_MAGIC && susfs_is_fuse_ino_sus_ino(ino)) {
 		return 0;
+	} else {
+		inode = ilookup(buf->sb, ino);
+		if (inode) {
+			if (susfs_need_to_spoof_sus_path(inode,  inode->i_uid.val)) {
+				iput(inode);
+				return 0;
+			}
+			iput(inode);
+		}
 	}
 #endif
 	buf->error = verify_dirent_name(name, namlen);
@@ -366,7 +419,9 @@ SYSCALL_DEFINE3(getdents64, unsigned int, fd,
 	f = fdget_pos(fd);
 	if (!f.file)
 		return -EBADF;
-
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	buf.sb = f.file->f_inode->i_sb;
+#endif		
 	error = iterate_dir(f.file, &buf.ctx);
 	if (error >= 0)
 		error = buf.error;
