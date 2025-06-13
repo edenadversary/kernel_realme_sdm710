@@ -1326,7 +1326,7 @@ void tick_cancel_sched_timer(int cpu)
 # endif
 
     idle_sleeptime = ts->idle_sleeptime;
-    iowait_sleeptime = ts->iowait_sleeptime
+    iowait_sleeptime = ts->iowait_sleeptime;
     idle_calls = ts->idle_calls;
     idle_sleeps = ts->idle_sleeps;
 	memset(ts, 0, sizeof(*ts));
