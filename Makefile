@@ -354,7 +354,6 @@ ifneq ($(LLVM),)
 CC		= clang
 LD		= ld.lld
 AR		= llvm-ar
-LDGOLD          = ld.lld
 NM		= llvm-nm
 OBJCOPY	= llvm-objcopy
 OBJDUMP	= llvm-objdump
