@@ -378,8 +378,6 @@ DEPMOD		= depmod
 PERL		= perl
 PYTHON		= python
 CHECK		= sparse
-HOSTLDFLAGS	+= -fuse-ld=lld
-HOSTCFLAGS      += -fuse-ld=lld
 
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
@@ -992,8 +990,6 @@ KBUILD_CFLAGS	+= $(call cc-option,-fmacro-prefix-map=$(srctree)/=)
 
 # use the deterministic mode of AR if available
 KBUILD_ARFLAGS := $(call ar-option,D)
-
-KBUILD_CFLAGS   += $(call cc-option, -fuse-ld=lld)
 
 include scripts/Makefile.kasan
 include scripts/Makefile.extrawarn
