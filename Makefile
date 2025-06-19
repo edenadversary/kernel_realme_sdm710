@@ -361,8 +361,6 @@ OBJDUMP 	= llvm-objdump
 READELF 	= llvm-readelf
 OBJSIZE 	= llvm-size
 STRIP		= llvm-strip
-HOSTLDFLAGS	+= -fuse-ld=lld
-HOSTCFLAGS      += -fuse-ld=lld
 else
 LD		= $(CROSS_COMPILE)ld
 CC		= $(CROSS_COMPILE)gcc
