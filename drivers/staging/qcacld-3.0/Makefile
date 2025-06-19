@@ -22,6 +22,15 @@ KBUILD_OPTIONS += CONFIG_QCA_WIFI_2_0=1
 KBUILD_OPTIONS += $(WLAN_SELECT)
 KBUILD_OPTIONS += $(KBUILD_EXTRA) # Extra config if any
 
+wlan-objs := $(addprefix $(obj)/,$(wlan-objs))  
+CMD_wlan.o = $(CC) @$(src)/wlan.rsp  # 👉 CLANG EATS THIS UP  
+
+# Create response file  
+quiet_cmd_create_rsp = RSP     $@  
+cmd_create_rsp = echo "$(c_flags) $(KBUILD_CFLAGS)" > $@  
+wlan.rsp: FORCE  
+	$(call cmd,create_rsp)  
+
 all:
 	$(MAKE) -C $(KERNEL_SRC) M=$(M) modules $(KBUILD_OPTIONS)
 
